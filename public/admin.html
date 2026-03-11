@@ -1,0 +1,1683 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>CMS Digital Signage V3 (Ultimate - Updated)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    
+    <style>
+        /* --- CORE STYLES --- */
+        body { background-color: #f4f6f9; font-size: 0.9rem; }
+        .tab-content { background: white; padding: 20px; border: 1px solid #dee2e6; border-top: none; min-height: 600px; }
+        .nav-tabs .nav-link.active { font-weight: bold; border-top: 3px solid #0d6efd; }
+        .media-preview { width: 60px; height: 40px; object-fit: contain; border: 1px solid #ddd; background: #eee; }
+        .btn-action { padding: 2px 6px; font-size: 0.8rem; margin-right: 2px; }
+        
+        /* Dropdowns & Schedule */
+        .custom-dropdown-menu { max-height: 300px; overflow-y: auto; width: 100%; padding: 10px; }
+        .dropdown-header { font-weight: bold; color: #0d6efd; font-size: 0.85rem; padding: 5px 0; border-bottom: 1px solid #eee; margin-top: 5px; }
+        .dropdown-item-text { padding: 5px 10px; cursor: pointer; border-radius: 4px; }
+        .dropdown-item-text:hover { background-color: #f8f9fa; }
+        .dropdown-item-text.active-item { background-color: #0d6efd; color: white; }
+        
+        /* Playlist & Sortable */
+        #selectorArea, #groupSelectorArea { max-height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 5px; margin-top: 5px; }
+        .select-item { padding: 8px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; cursor: pointer;}
+        .select-item:hover { background: #f0f8ff; }
+        .sortable-ghost { opacity: 0.4; background-color: #c8ebfb; }
+        .sortable-fallback { opacity: 1 !important; background: white; border: 1px solid #0d6efd; box-shadow: 0 5px 15px rgba(0,0,0,0.3); cursor: grabbing; }
+        .drag-handle { cursor: grab; color: #888; }
+        .drag-handle:active { cursor: grabbing; color: #333; }
+        
+        /* Table Sorting */
+        th.sortable { cursor: pointer; user-select: none; transition: background-color 0.2s; }
+        th.sortable:hover { background-color: #e2e6ea; color: #0d6efd; }
+        th.sortable small { font-size: 0.7rem; margin-left: 3px; color: #666; }
+
+        /* Status Badges */
+        .status-cell { display: flex; justify-content: center; align-items: center; gap: 5px; height: 100%; }
+        .action-cell { display: flex; justify-content: flex-start; align-items: center; gap: 5px; }
+        .badge-status { min-width: 80px; text-align: center; }
+        .badge-sync { min-width: 100px; text-align: center; }
+
+        /* --- VISUAL REGION EDITOR STYLES --- */
+        .layout-editor-container {
+            width: 768px; height: 432px; /* 16:9 scale 0.4 */
+            background-color: #000; position: relative; margin: 0 auto 20px auto; border: 2px solid #333; overflow: hidden;
+            background-image: linear-gradient(45deg, #222 25%, transparent 25%, transparent 75%, #222 75%, #222), linear-gradient(45deg, #222 25%, transparent 25%, transparent 75%, #222 75%, #222);
+            background-size: 20px 20px; background-position: 0 0, 10px 10px;
+        }
+        .visual-region {
+            position: absolute; border: 1px solid rgba(255,255,255,0.5);
+            background-color: rgba(13, 110, 253, 0.3); color: white;
+            display: flex; justify-content: center; align-items: center; cursor: move; user-select: none;
+            overflow: hidden; background-size: cover; background-position: center;
+            text-shadow: 1px 1px 2px black;
+        }
+        .visual-region.active { border: 2px solid #198754; z-index: 100 !important; box-shadow: 0 0 10px rgba(25, 135, 84, 0.8); }
+        .visual-region:hover { background-color: rgba(13, 110, 253, 0.5); }
+        .visual-region-content {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            width: 100%; height: 100%; background: rgba(0,0,0,0.4); pointer-events: none;
+        }
+        .resize-handle { width: 15px; height: 15px; background: white; border:1px solid #000; position: absolute; right: 0; bottom: 0; cursor: nwse-resize; z-index: 101;}
+        .region-box { border: 1px solid #dee2e6; background: #f8f9fa; margin-bottom: 5px; padding: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+		
+		/* --- CSS FIX CHO MOBILE (Màn hình nhỏ hơn 768px) --- */
+		@media (max-width: 768px) {
+
+			/* 1. Sửa lỗi ô nhập liệu Region quá nhỏ */
+			/* Tìm vùng chứa các ô input trong Modal Region */
+			#regionEditorControls, /* Thêm ID này vào div bao quanh các input nếu chưa có */
+			.modal-body .d-flex { /* Hoặc target chung các thẻ flex trong modal */
+				flex-wrap: wrap !important; /* Cho phép rớt dòng */
+				gap: 10px;
+			}
+
+			/* Ép các ô input X, Y, W, H to ra */
+			#rName, #rLeft, #rTop, #rWidth, #rHeight, #rZ {
+				min-width: 45% !important; /* Mỗi ô chiếm gần 1 nửa màn hình */
+				height: 45px !important;   /* Cao hơn để dễ bấm */
+				font-size: 16px !important; /* Chữ to rõ */
+				margin-bottom: 5px;
+			}
+			
+			/* Riêng nút "Thêm Mới" và "Hủy" cho to hết cỡ */
+			.modal-body button {
+				width: 100%;
+				margin-top: 10px;
+				padding: 10px;
+			}
+
+			/* 2. Sửa lỗi Playlist bị ẩn nút Xóa */
+			/* Giả sử danh sách bên trái có ID hoặc class list-group-item */
+			#playlistItems li, 
+			.list-group-item {
+				display: flex;
+				flex-wrap: wrap; /* Cho phép rớt dòng */
+				position: relative;
+				padding-bottom: 40px !important; /* Chừa chỗ cho nút xóa */
+			}
+
+			/* Phần tên media/ảnh */
+			.list-group-item > div:first-child {
+				width: 100%;
+			}
+
+			/* Lôi nút xóa ra và phóng to */
+			.btn-remove-media, 
+			button.btn-danger { 
+				position: absolute;
+				bottom: 5px;
+				right: 5px;
+				left: 5px; /* Kéo dài từ trái sang phải */
+				width: auto;
+				display: block !important; /* Luôn hiện, không cần hover */
+				opacity: 1 !important;
+				z-index: 10;
+				text-align: center;
+			}
+		}
+    </style>
+</head>
+<body class="container-fluid mt-3">
+
+    <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-2 rounded shadow-sm">
+        <h5 class="m-0 text-primary">CMS Admin Panel</h5>
+        <div class="d-flex align-items-center gap-2">
+            <div class="form-check form-switch m-0">
+                <input class="form-check-input" type="checkbox" id="autoRefreshSwitch" onchange="toggleAutoRefresh()">
+                <label class="form-check-label" for="autoRefreshSwitch">Auto Refresh</label>
+            </div>
+            <input type="number" id="refreshInterval" class="form-control form-control-sm" value="3" style="width: 70px;" min="3">
+        </div>
+    </div>
+
+    <ul class="nav nav-tabs" id="myTab">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#displays">Displays</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#groups">Groups</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#media">Media</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#layout">Layouts</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#campaigns">Campaigns</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#schedule">Schedule</button></li>
+    </ul>
+
+    <div class="tab-content shadow-sm">
+        
+        <div class="tab-pane fade show active" id="displays">
+            <div class="d-flex justify-content-between mb-2">
+                <input type="text" class="form-control w-25" id="filterDisplay" placeholder="Tìm tên..." onkeyup="renderDisplays()">
+                <button class="btn btn-sm btn-outline-primary" onclick="loadDisplays()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+            </div>
+            <table class="table table-bordered table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th class="sortable" onclick="sortData('displays', 'id')">ID <span id="sort_displays_id"></span></th>
+                        <th class="sortable" onclick="sortData('displays', 'name')">Tên <span id="sort_displays_name"></span></th>
+                        <th class="sortable" onclick="sortData('displays', 'device_code')">Code <span id="sort_displays_device_code"></span></th>
+                        <th class="sortable" onclick="sortData('displays', 'ip_address')">IP <span id="sort_displays_ip_address"></span></th>
+                        <th class="sortable" onclick="sortData('displays', 'last_seen')">Last Seen <span id="sort_displays_last_seen"></span></th>
+                        <th class="text-center sortable" onclick="sortData('displays', 'status')">Status <span id="sort_displays_status"></span></th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="displayList"></tbody>
+            </table>
+        </div>
+
+        <div class="tab-pane fade" id="groups">
+            <div class="input-group mb-3 w-50">
+                <input type="text" id="gName" class="form-control" placeholder="Tên nhóm mới">
+                <button class="btn btn-success" onclick="createGroup()">Tạo Nhóm</button>
+            </div>
+            <table class="table table-bordered table-hover align-middle">
+                <thead class="table-light"><tr><th>ID</th><th>Tên Nhóm</th><th>Thành viên</th><th>Hành động</th></tr></thead>
+                <tbody id="groupTableBody"></tbody>
+            </table>
+        </div>
+
+        <div class="tab-pane fade" id="media">
+            <div class="row">
+                <div class="col-md-3 border-end">
+                    <h6 class="text-primary">Add New Media</h6>
+                    <input type="text" id="mName" class="form-control mb-2" placeholder="Tên Media">
+                    <select id="mType" class="form-select mb-2" onchange="toggleMInput('new')">
+                        <option value="image">Hình ảnh</option><option value="video">Video</option><option value="website">Website</option>
+                    </select>
+                    <div id="mFileGroup"><input type="file" id="mFile" class="form-control mb-2"></div>
+                    <div id="mUrlGroup" style="display:none">
+                        <input type="text" id="mUrl" class="form-control mb-2" placeholder="URL (https://...)">
+                        <label class="small text-muted">Web Scale (%):</label>
+                        <input type="number" id="mScale" class="form-control mb-2" value="100">
+                    </div>
+                    <input type="number" id="mDur" class="form-control mb-2" value="10" placeholder="Thời lượng (giây)">
+                    <button class="btn btn-success w-100" onclick="uploadMedia()">Upload</button>
+                </div>
+                <div class="col-md-9">
+                    <div class="d-flex gap-2 mb-2">
+                        <input type="text" id="filterMediaName" class="form-control" placeholder="Tìm tên/ID..." onkeyup="renderMedia()">
+                        <select id="filterMediaType" class="form-select w-25" onchange="renderMedia()">
+                            <option value="">Tất cả</option><option value="image">Image</option><option value="video">Video</option><option value="website">Website</option>
+                        </select>
+                    </div>
+                    <table class="table table-striped align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="sortable" onclick="sortData('media', 'id')">ID <span id="sort_media_id"></span></th>
+                                <th class="sortable" onclick="sortData('media', 'name')">Name <span id="sort_media_name"></span></th>
+                                <th class="sortable" onclick="sortData('media', 'type')">Type <span id="sort_media_type"></span></th>
+                                <th class="sortable" onclick="sortData('media', 'duration')">Duration <span id="sort_media_duration"></span></th>
+                                <th class="sortable" onclick="sortData('media', 'size')">Size <span id="sort_media_size"></span></th>
+                                <th>Preview</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mediaList"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="layout">
+            <div class="card p-3 mb-3 bg-light border-0">
+                <div class="row align-items-center">
+                    <div class="col-md-5"><input type="text" id="lName" class="form-control" placeholder="Tên Layout mới..."></div>
+                    <div class="col-md-3"><select id="lOrient" class="form-select"><option value="landscape">Ngang</option><option value="portrait">Dọc</option></select></div>
+                    <div class="col-md-2"><button class="btn btn-primary w-100" onclick="createLayout()">+ Tạo</button></div>
+                </div>
+            </div>
+            <input type="text" id="filterLayout" class="form-control w-50 mb-2" placeholder="Tìm layout..." onkeyup="renderLayouts()">
+            <table class="table table-bordered table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th class="sortable" onclick="sortData('layouts', 'id')">ID <span id="sort_layouts_id"></span></th>
+                        <th class="sortable" onclick="sortData('layouts', 'name')">Tên Layout <span id="sort_layouts_name"></span></th>
+                        <th class="sortable" onclick="sortData('layouts', 'orientation')">Chiều <span id="sort_layouts_orientation"></span></th>
+                        <th>Status</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody id="layoutListRender"></tbody>
+            </table>
+        </div>
+
+        <div class="tab-pane fade" id="campaigns">
+            <div class="input-group mb-3 w-50">
+                <input type="text" id="cName" class="form-control" placeholder="Tên Campaign mới">
+                <button class="btn btn-primary" onclick="createCampaign()">Tạo</button>
+            </div>
+            <table class="table table-bordered align-middle">
+                <thead class="table-light"><tr><th>Name</th><th>Layouts Count</th><th>Action</th></tr></thead>
+                <tbody id="campaignListRender"></tbody>
+            </table>
+        </div>
+
+        <div class="tab-pane fade" id="schedule">
+            <div class="row">
+                <div class="col-md-3 border-end">
+                    <h6 class="text-primary">Lên Lịch Mới</h6>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="schPriority">
+                        <label class="form-check-label text-danger fw-bold" for="schPriority">Ưu tiên (Chen ngang)</label>
+                    </div>
+                    <div class="mb-2 position-relative">
+                        <label class="form-label fw-bold">1. Chọn Đối tượng:</label>
+                        <button class="form-select text-start text-truncate" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="targetDropdownBtn">-- Chọn Thiết bị/Nhóm --</button>
+                        <div class="dropdown-menu custom-dropdown-menu" onclick="event.stopPropagation()">
+                            <input type="text" class="form-control form-control-sm mb-2" placeholder="Tìm kiếm..." onkeyup="filterScheduleDropdown(this, 'targetList')">
+                            <div id="targetList"></div>
+                        </div>
+                    </div>
+                    <div class="mb-2 position-relative">
+                        <label class="form-label fw-bold">2. Chọn Nội dung:</label>
+                        <button class="form-select text-start text-truncate" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="contentDropdownBtn">-- Chọn Layout/Campaign --</button>
+                        <div class="dropdown-menu custom-dropdown-menu" onclick="event.stopPropagation()">
+                            <input type="text" class="form-control form-control-sm mb-2" placeholder="Tìm kiếm..." onkeyup="filterScheduleDropdown(this, 'contentList')">
+                            <div id="contentList"></div>
+                        </div>
+                        <input type="hidden" id="selectedContentVal">
+                    </div>
+                    <label class="form-label fw-bold mt-2">3. Thời gian:</label>
+                    <div class="mb-2"><small>Từ:</small><input type="datetime-local" id="schStart" class="form-control"></div>
+                    <div class="mb-3"><small>Đến:</small><input type="datetime-local" id="schEnd" class="form-control"></div>
+                    <button class="btn btn-danger w-100" onclick="addSchedule()">Lưu Lịch</button>
+                </div>
+                <div class="col-md-9">
+                    <table class="table table-bordered align-middle">
+                        <thead class="table-light"><tr><th>Đối tượng</th><th>Nội dung</th><th>Thời gian</th><th>Hành động</th></tr></thead>
+                        <tbody id="scheduleList"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Edit</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="editModalBody"></div><div class="modal-footer"><button class="btn btn-primary" id="btnSaveEdit">Lưu</button></div></div></div></div>
+
+    <div class="modal fade" id="groupManageModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title" id="grpTitle">Quản lý Nhóm</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 border-end"><h6 class="text-success">Thành viên trong nhóm</h6><table class="table align-middle table-sm table-bordered"><thead class="table-light"><tr><th>Name</th><th>Code</th><th>Action</th></tr></thead><tbody id="groupCurrentMembers"></tbody></table></div>
+                        <div class="col-md-6"><h6 class="text-primary">Thêm Thiết Bị vào nhóm</h6><input type="text" id="searchGroupAdd" class="form-control mb-2" placeholder="Tìm tên thiết bị..." onkeyup="filterSelector('groupSelectorArea', this.value)"><div id="groupSelectorArea"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="regionModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Visual Layout Editor (1920x1080)</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <div class="layout-editor-container" id="visualEditor"></div>
+                    <div class="card p-2 bg-light mt-2">
+                        <div class="d-flex flex-wrap gap-2 region-inputs-mobile">
+                            <input type="hidden" id="regId">
+                            <div class="col-3"><label>Tên Vùng</label><input id="regName" class="form-control form-control-sm" placeholder="Name"></div>
+                            <div class="col-1"><label>X</label><input id="regX" type="number" class="form-control form-control-sm" value="0"></div>
+                            <div class="col-1"><label>Y</label><input id="regY" type="number" class="form-control form-control-sm" value="0"></div>
+                            <div class="col-1"><label>W</label><input id="regW" type="number" class="form-control form-control-sm" value="1920"></div>
+                            <div class="col-1"><label>H</label><input id="regH" type="number" class="form-control form-control-sm" value="1080"></div>
+                            <div class="col-1"><label>Z</label><input id="regZ" type="number" class="form-control form-control-sm" value="1"></div>
+                            <div class="col-4 d-flex gap-2">
+                                <button class="btn btn-primary btn-sm w-100" id="btnAddRegion" onclick="addRegion()">+ Thêm Mới</button>
+                                <button class="btn btn-success btn-sm w-100 d-none" id="btnUpdateRegion" onclick="updateRegion()">Lưu Sửa</button>
+                                <button class="btn btn-secondary btn-sm" onclick="resetRegionForm()">Hủy</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3"><h6>Danh sách Vùng</h6><div id="regionListTable" style="max-height: 150px; overflow-y: auto;"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="playlistModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="plTitle"></h5>
+                    <div class="ms-4 d-flex align-items-center" id="regionSelectContainer" style="display:none;">
+                        <label class="me-2 fw-bold">Chọn Vùng:</label>
+                        <select id="plRegionSelect" class="form-select form-select-sm" style="width: 200px;" onchange="changePlaylistRegion()"></select>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-7 border-end">
+                            <h6 class="text-success">Danh sách (Kéo thả icon <i class="bi bi-list"></i>)</h6>
+                            <div id="playlistContainer" style="max-height: 400px; overflow-y: auto; overflow-x: hidden;">
+                                <table class="table align-middle table-sm table-hover mb-0">
+                                    <thead style="position: sticky; top: 0; background: white; z-index: 1;">
+                                        <tr>
+                                            <th style="width: 50px;">#</th>
+                                            <th>Info</th>
+                                            <th>Tên</th>
+                                            <th>Time</th>
+                                            <th style="width: 50px;">Xóa</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="playlistItems"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <h6 class="text-primary" id="addHeaderTitle">Thêm mới</h6>
+                            <input type="text" id="searchToAdd" class="form-control mb-2" placeholder="Tìm kiếm..." onkeyup="filterSelector('selectorArea', this.value)">
+                            <div id="selectorArea"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light"><span class="text-muted small me-auto">* Mẹo: Giữ chuột vào <i class="bi bi-list"></i> và lăn chuột để cuộn nhanh</span><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button><button type="button" class="btn btn-success px-4" onclick="savePlaylistChanges()"><i class="bi bi-save"></i> LƯU THAY ĐỔI</button></div>
+            </div>
+        </div>
+    </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const API = window.location.origin + '/api';
+    let currentEditType='', currentEditId=null, currentParentId=null, currentModalMode=''; 
+    let currentLayoutId=null, currentRegionId=null, currentGroupManageId=0; 
+    let autoRefreshTimer=null;
+    
+    // Data Caches
+    const GlobalData = { displays: [], groups: [], media: [], layouts: [], campaigns: [], schedule: [] };
+    let regionsCache = []; let layoutItemsCache = [];
+    
+    const SortState = { displays:{col:'id',dir:'desc'}, media:{col:'id',dir:'desc'}, layouts:{col:'id',dir:'desc'} };
+
+    // --- UTILS ---
+    function formatBytes(b){if(!b)return'0 B';const k=1024;return b<1048576?(b/k).toFixed(2)+' KB':(b/(k*k)).toFixed(2)+' MB';}
+    function formatDuration(s){return new Date(s*1000).toISOString().substr(11,8);}
+    function formatDate(d){return d?new Date(d).toLocaleString():'-';}
+    function formatDateForInput(d){if(!d)return'';const dt=new Date(d);const off=dt.getTimezoneOffset()*60000;return(new Date(dt-off)).toISOString().slice(0,16);}
+
+    // --- SORTING ---
+    function sortData(type, col){
+        const s = SortState[type];
+        
+        // 1. Đảo chiều sắp xếp
+        if(s.col === col) s.dir = s.dir === 'asc' ? 'desc' : 'asc';
+        else { s.col = col; s.dir = 'asc'; }
+        
+        // 2. Thực hiện sắp xếp trên biến GlobalData (Bộ nhớ đệm)
+        GlobalData[type].sort((a,b)=>{
+            let vA = a[col]; let vB = b[col];
+            
+            // Xử lý null/undefined
+            if (vA == null) vA = ""; 
+            if (vB == null) vB = "";
+            
+            // Nếu là số thì so sánh số, là chuỗi thì so sánh chuỗi
+            if (typeof vA === 'string' && typeof vB === 'string') {
+                vA = vA.toLowerCase();
+                vB = vB.toLowerCase();
+            }
+            
+            if (vA < vB) return s.dir === 'asc' ? -1 : 1;
+            if (vA > vB) return s.dir === 'asc' ? 1 : -1;
+            return 0;
+        });
+        
+        // 3. Cập nhật icon mũi tên chỉ báo
+        document.querySelectorAll(`[id^="sort_${type}_"]`).forEach(el => el.innerHTML = '');
+        const iconEl = document.getElementById(`sort_${type}_${col}`);
+        if(iconEl) iconEl.innerHTML = ` <small>${s.dir === 'asc' ? '▲' : '▼'}</small>`;
+        
+        // 4. QUAN TRỌNG: Chỉ Render lại, KHÔNG gọi refreshData (vì sẽ tải lại từ server làm mất sort)
+        if (type === 'displays') renderDisplays();
+        else if (type === 'media') renderMedia();
+        else if (type === 'layouts') renderLayouts();
+    }
+    
+    function toggleAutoRefresh(){
+        if(document.getElementById('autoRefreshSwitch').checked){
+            autoRefreshTimer=setInterval(()=>{const t=document.querySelector('.nav-link.active').getAttribute('data-bs-target').replace('#','');refreshData(t);}, (document.getElementById('refreshInterval').value||5)*1000);
+        }else clearInterval(autoRefreshTimer);
+    }
+    
+    function refreshData(type){
+        switch(type){
+            case 'displays': loadDisplays(); break;
+            case 'groups': loadGroups(); break;
+            case 'media': loadMedia(); break;
+            case 'layouts': case 'layout': loadLayouts(); break;
+            case 'campaigns': case 'campaign': loadCampaigns(); break;
+            case 'schedule': loadScheduleList(); break;
+        }
+    }
+
+    // ==========================================
+	// 1. DISPLAYS (QUẢN LÝ MÀN HÌNH)
+	// ==========================================
+
+	async function loadDisplays() {
+		const r = await fetch(API + '/displays');
+		GlobalData.displays = await r.json();
+		renderDisplays();
+		renderTargetDropdown();
+	}
+
+	function renderDisplays() {
+		const filter = document.getElementById('filterDisplay').value.toLowerCase();
+		
+		const html = GlobalData.displays
+			.filter(d => d.name.toLowerCase().includes(filter))
+			.map(d => {
+				// Logic kiểm tra Online (cách hiện tại 2 phút)
+				const isOnline = (Date.now() - new Date(d.last_seen).getTime()) < 120000;
+				
+				let statusBadge = '';
+				let syncBadge = '';
+				let onlineBadge = isOnline 
+					? '<span class="badge bg-success badge-status">Online</span>' 
+					: '<span class="badge bg-secondary badge-status">Offline</span>';
+
+				// Logic hiển thị trạng thái Sync
+				if (d.status == 1) { // Đã duyệt
+					if (isOnline) {
+						if (d.is_downloading) {
+							syncBadge = '<span class="badge bg-warning text-dark badge-sync">DL...</span>';
+						} else if (d.active_hash && d.reported_hash === d.active_hash) {
+							syncBadge = '<span class="badge bg-primary badge-sync">Synced</span>';
+						} else {
+							syncBadge = '<span class="badge bg-danger badge-sync">Not Sync</span>';
+						}
+					}
+				} else {
+					onlineBadge = '<span class="badge bg-warning text-dark badge-status">Pending</span>';
+				}
+
+				// Nút chức năng
+				const ssBtn = isOnline 
+					? `<button class="btn btn-sm btn-dark btn-action" onclick="requestScreenshot(${d.id})" title="Chụp màn hình"><i class="bi bi-camera"></i></button>` 
+					: `<button class="btn btn-sm btn-secondary btn-action" disabled><i class="bi bi-camera"></i></button>`;
+				
+				const viewSSBtn = d.last_screenshot_path 
+					? `<a href="${d.last_screenshot_path}" target="_blank" class="btn btn-sm btn-outline-dark btn-action" title="Xem ảnh"><i class="bi bi-eye"></i></a>` 
+					: `<button class="btn btn-sm btn-outline-secondary btn-action" disabled><i class="bi bi-eye"></i></button>`;
+
+				const approveBtn = d.status == 0 
+					? `<button class="btn btn-sm btn-success btn-action" onclick="approveDevice(${d.id})">Duyệt</button>` 
+					: '';
+
+				return `
+					<tr>
+						<td>${d.id}</td>
+						<td><b>${d.name}</b></td>
+						<td>${d.device_code}</td>
+						<td>${d.ip_address || '-'}</td>
+						<td>${formatDate(d.last_seen)}</td>
+						<td>
+							<div class="status-cell">
+								${onlineBadge}
+								${syncBadge}
+							</div>
+						</td>
+						<td>
+							<div class="action-cell">
+								${ssBtn}
+								${viewSSBtn}
+								${approveBtn}
+								<button class="btn btn-sm btn-primary btn-action" onclick="openEditDisplay(${d.id})"><i class="bi bi-pencil"></i></button>
+								<button class="btn btn-sm btn-danger btn-action" onclick="deleteItem('displays',${d.id})"><i class="bi bi-trash"></i></button>
+							</div>
+						</td>
+					</tr>
+				`;
+			}).join('');
+
+		document.getElementById('displayList').innerHTML = html;
+	}
+
+	async function approveDevice(id) {
+		if (confirm("Duyệt thiết bị này?")) {
+			await fetch(API + `/displays/${id}/approve`, { method: 'PUT' });
+			loadDisplays();
+		}
+	}
+
+	async function requestScreenshot(id) {
+		if (confirm("Yêu cầu chụp màn hình ngay lập tức?")) {
+			await fetch(API + `/displays/${id}/command`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ cmd: 'screenshot' })
+			});
+		}
+	}
+
+
+	// ==========================================
+	// 2. GROUPS (QUẢN LÝ NHÓM)
+	// ==========================================
+
+	async function loadGroups() {
+		const r = await fetch(API + '/groups');
+		GlobalData.groups = await r.json();
+
+		document.getElementById('groupTableBody').innerHTML = GlobalData.groups.map(g => `
+			<tr>
+				<td>${g.id}</td>
+				<td>${g.name}</td>
+				<td>${g.member_names || '<i class="text-muted">Trống</i>'}</td>
+				<td>
+					<button class="btn btn-sm btn-info btn-action" onclick="openGroupManageModal(${g.id}, '${g.name}')">Thành viên</button>
+					<button class="btn btn-sm btn-primary btn-action" onclick="openEditGroup(${g.id},'${g.name}')">Sửa</button>
+					<button class="btn btn-sm btn-danger btn-action" onclick="deleteItem('groups',${g.id})">Xóa</button>
+				</td>
+			</tr>
+		`).join('');
+
+		renderTargetDropdown();
+	}
+
+	async function createGroup() {
+		const name = document.getElementById('gName').value;
+		await fetch(API + '/groups', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ name: name })
+		});
+		loadGroups();
+	}
+
+	let currentGroupId = null;
+
+	async function openGroupManageModal(id, name) {
+		currentGroupId = id;
+		document.getElementById('grpTitle').innerText = "Quản lý nhóm: " + name;
+		await reloadGroupMembers();
+		renderGroupSelector();
+		new bootstrap.Modal(document.getElementById('groupManageModal')).show();
+	}
+
+	async function reloadGroupMembers() {
+		const res = await fetch(API + `/groups/${currentGroupId}/members`);
+		const members = await res.json();
+		
+		document.getElementById('groupCurrentMembers').innerHTML = members.map(m => `
+			<tr>
+				<td><b>${m.name}</b></td>
+				<td><small>${m.device_code}</small></td>
+				<td class="text-center">
+					<button class="btn btn-sm btn-danger" onclick="removeGroupMember(${m.id})">
+						<i class="bi bi-trash"></i>
+					</button>
+				</td>
+			</tr>
+		`).join('');
+	}
+
+	function renderGroupSelector() {
+		const container = document.getElementById('groupSelectorArea');
+		container.innerHTML = '';
+		
+		GlobalData.displays.forEach(d => {
+			const div = document.createElement('div');
+			div.className = 'select-item';
+			div.dataset.search = d.name.toLowerCase();
+			div.innerHTML = `
+				<span>${d.name}</span> 
+				<button class="btn btn-sm btn-outline-primary" onclick="addGroupMember(${d.id})">
+					<i class="bi bi-plus"></i>
+				</button>
+			`;
+			container.appendChild(div);
+		});
+	}
+
+	async function addGroupMember(did) {
+		await fetch(API + '/groups/add-member', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ group_id: currentGroupId, device_id: did })
+		});
+		reloadGroupMembers();
+	}
+
+	async function removeGroupMember(did) {
+		await fetch(API + `/groups/${currentGroupId}/members/${did}`, { method: 'DELETE' });
+		reloadGroupMembers();
+	}
+
+
+	// ==========================================
+	// 3. MEDIA (QUẢN LÝ MEDIA)
+	// ==========================================
+
+	async function loadMedia() {
+		const r = await fetch(API + '/media');
+		GlobalData.media = await r.json();
+		renderMedia();
+	}
+
+	function renderMedia() {
+		const fName = document.getElementById('filterMediaName').value.toLowerCase();
+		const fType = document.getElementById('filterMediaType').value;
+
+		const html = GlobalData.media
+			.filter(m => {
+				const matchName = m.name.toLowerCase().includes(fName) || m.id.toString().includes(fName);
+				const matchType = fType === '' || m.type === fType;
+				return matchName && matchType;
+			})
+			.map(m => {
+				const preview = m.type === 'image' 
+					? `<img src="${m.path}" class="media-preview">` 
+					: m.type;
+
+				const dlBtn = m.type !== 'website' 
+					? `<a href="${m.path}" download class="btn btn-sm btn-success btn-action"><i class="bi bi-download"></i></a>` 
+					: `<button disabled class="btn btn-sm btn-secondary btn-action"><i class="bi bi-download"></i></button>`;
+
+				return `
+					<tr>
+						<td>${m.id}</td>
+						<td>${m.name}</td>
+						<td>${m.type}</td>
+						<td>${formatDuration(m.duration)}</td>
+						<td>${formatBytes(m.size)}</td>
+						<td class="text-center">${preview}</td>
+						<td>
+							${dlBtn} 
+							<button class="btn btn-sm btn-warning btn-action" onclick="unlinkMedia(${m.id})" title="Gỡ khỏi layout"><i class="bi bi-link-45deg"></i></button> 
+							<button class="btn btn-sm btn-primary btn-action" onclick="openEditMedia(${m.id})"><i class="bi bi-pencil"></i></button> 
+							<button class="btn btn-sm btn-danger btn-action" onclick="deleteMedia(${m.id})"><i class="bi bi-trash"></i></button>
+						</td>
+					</tr>
+				`;
+			}).join('');
+
+		document.getElementById('mediaList').innerHTML = html;
+	}
+
+	async function uploadMedia() {
+		const fd = new FormData();
+		fd.append('name', document.getElementById('mName').value);
+		fd.append('type', document.getElementById('mType').value);
+		fd.append('duration', document.getElementById('mDur').value);
+		fd.append('scale', document.getElementById('mScale').value);
+		
+		const fileInput = document.getElementById('mFile');
+		if (fileInput.files[0]) {
+			fd.append('file', fileInput.files[0]);
+		}
+		
+		if (document.getElementById('mType').value === 'website') {
+			fd.append('url', document.getElementById('mUrl').value);
+		}
+
+		await fetch(API + '/media/upload', { method: 'POST', body: fd });
+		loadMedia();
+	}
+
+	async function deleteMedia(id) {
+		if (confirm("Bạn có chắc chắn muốn xóa Media này?")) {
+			await fetch(API + `/media/${id}`, { method: 'DELETE' });
+			loadMedia();
+		}
+	}
+
+	async function unlinkMedia(id) {
+		if (confirm("Gỡ Media này khỏi tất cả các Layout?")) {
+			await fetch(API + `/media/unlink/${id}`, { method: 'POST' });
+		}
+	}
+
+    // --- 4. LAYOUTS & REGIONS ---
+    async function loadLayouts(){ 
+        const r = await fetch(API+'/layouts'); 
+        const rawLayouts = await r.json(); 
+        
+        // CẬP NHẬT LOGIC CHECK TRẠNG THÁI TẠI ĐÂY
+        GlobalData.layouts = await Promise.all(rawLayouts.map(async l => {
+            const [items, regions] = await Promise.all([
+                (await fetch(API+`/layouts/${l.id}/items`)).json(),
+                (await fetch(API+`/layouts/${l.id}/regions`)).json()
+            ]);
+
+            l.regionCount = regions.length;
+            l.itemCount = items.length;
+
+            // Logic check theo yêu cầu:
+            // 1. Nếu không có region -> False
+            // 2. Nếu có region mà không có media (items) -> False
+            // 3. Có cả 2 -> True
+            l.isValid = (l.regionCount > 0 && l.itemCount > 0);
+            
+            return l;
+        }));
+        
+        renderLayouts(); 
+        renderContentDropdown(); 
+    }
+    
+    function renderLayouts(){
+        const f = document.getElementById('filterLayout').value.toLowerCase();
+        document.getElementById('layoutListRender').innerHTML = GlobalData.layouts.filter(l => l.name.toLowerCase().includes(f)).map(l => {
+            // Xác định icon và lý do lỗi (nếu có)
+            let statusIcon = '';
+            if (l.isValid) {
+                statusIcon = '<i class="bi bi-check-circle-fill text-success fs-5"></i>';
+            } else {
+                let reason = l.regionCount === 0 ? "Chưa có Region" : "Chưa có Media";
+                statusIcon = `<i class="bi bi-x-circle-fill text-danger fs-5" title="${reason}"></i> <small class="text-muted d-block" style="font-size:0.6rem">${reason}</small>`;
+            }
+
+            return `
+            <tr>
+                <td>${l.id}</td>
+                <td><b>${l.name}</b></td>
+                <td>${l.orientation}</td>
+                <td class="text-center">${statusIcon}</td>
+                <td>
+                    <button class="btn btn-sm btn-info btn-action" onclick="openRegionModal(${l.id})"><i class="bi bi-grid-1x2"></i> Regions</button>
+                    <button class="btn btn-sm btn-warning btn-action" onclick="openPlaylistModal('layout',${l.id},'${l.name}')"><i class="bi bi-collection-play"></i> Playlist</button>
+                    <button class="btn btn-sm btn-dark btn-action" onclick="window.open('player.html?code=PREVIEW_BOX&previewLayout=${l.id}','_blank')">Preview</button>
+                    <button class="btn btn-sm btn-primary btn-action" onclick="openEditLayout(${l.id})">Sửa</button>
+                    <button class="btn btn-sm btn-danger btn-action" onclick="deleteItem('layouts',${l.id})">Xóa</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+    async function createLayout(){await fetch(API+'/layouts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('lName').value,orientation:document.getElementById('lOrient').value})});loadLayouts();}
+
+    // --- REGION LOGIC ---
+    async function openRegionModal(id) {
+        currentLayoutId = id; 
+        
+        // 1. Tìm layout hiện tại để lấy orientation
+        const layout = GlobalData.layouts.find(l => l.id === id);
+        const isPortrait = layout && layout.orientation === 'portrait';
+
+        // 2. Chỉnh lại kích thước khung Visual Editor dựa trên orientation
+        const container = document.getElementById('visualEditor');
+        const modalTitle = document.querySelector('#regionModal .modal-title');
+
+        // Scale factor hiện tại trong code renderVisualEditor là 0.4
+        // Landscape: 1920 * 0.4 = 768px | 1080 * 0.4 = 432px
+        // Portrait:  1080 * 0.4 = 432px | 1920 * 0.4 = 768px
+        
+        if (isPortrait) {
+            container.style.width = '432px';
+            container.style.height = '768px';
+            modalTitle.innerText = `Visual Layout Editor (1080x1920) - ${layout?.name}`;
+            // Căn giữa khung dọc cho dễ nhìn
+            container.style.margin = '0 auto'; 
+        } else {
+            container.style.width = '768px';
+            container.style.height = '432px';
+            modalTitle.innerText = `Visual Layout Editor (1920x1080) - ${layout?.name}`;
+        }
+
+        // 3. Load dữ liệu như cũ
+        const [regRes, itemRes] = await Promise.all([
+            fetch(API+`/layouts/${id}/regions`), 
+            fetch(API+`/layouts/${id}/items`)
+        ]);
+        regionsCache = await regRes.json(); 
+        layoutItemsCache = await itemRes.json();
+        
+        renderVisualEditor(); 
+        renderRegionListTable();
+        new bootstrap.Modal(document.getElementById('regionModal')).show();
+    }
+    // ==========================================
+	// 4. VISUAL EDITOR & REGIONS (LOGIC KÉO THẢ LAYOUT)
+	// ==========================================
+
+	function renderVisualEditor() {
+		const container = document.getElementById('visualEditor');
+		container.innerHTML = '';
+		const scaleFactor = 0.4; // Tỉ lệ thu nhỏ của Visual Editor so với kích thước thật (Full HD)
+
+		regionsCache.forEach(reg => {
+			const el = document.createElement('div');
+			el.className = 'visual-region';
+			
+			// Set vị trí & kích thước theo tỉ lệ scale
+			el.style.left = (reg.left_pos * scaleFactor) + 'px';
+			el.style.top = (reg.top_pos * scaleFactor) + 'px';
+			el.style.width = (reg.width * scaleFactor) + 'px';
+			el.style.height = (reg.height * scaleFactor) + 'px';
+			el.style.zIndex = reg.z_index;
+
+			// Tìm item đầu tiên trong vùng này để hiển thị preview
+			const firstItem = layoutItemsCache.find(i => i.region_id == reg.id);
+			let contentHtml = `<span>${reg.name}</span>`;
+
+			if (firstItem) {
+				if (firstItem.type === 'image') {
+					el.style.backgroundImage = `url('${firstItem.path}')`;
+				} else if (firstItem.type === 'video') {
+					el.style.backgroundColor = '#000';
+					contentHtml = `<span><i class="bi bi-play-circle fs-1"></i></span>`;
+				} else {
+					el.style.backgroundColor = '#fff';
+					contentHtml = `<span style="color:black"><i class="bi bi-globe fs-1"></i></span>`;
+				}
+			}
+
+			el.innerHTML = `<div class="visual-region-content">${contentHtml}</div>`;
+
+			// --- Logic Di Chuyển (Drag) ---
+			let isDragging = false;
+			
+			el.onmousedown = (e) => {
+				if (e.target.classList.contains('resize-handle')) return; // Nếu bấm vào nút resize thì bỏ qua drag
+				
+				isDragging = false;
+				const startX = e.clientX;
+				const startY = e.clientY;
+				const startLeft = parseFloat(el.style.left);
+				const startTop = parseFloat(el.style.top);
+
+				document.onmousemove = (me) => {
+					// Xác định xem có phải đang kéo thật không (tránh click nhầm)
+					if (Math.abs(me.clientX - startX) > 5) isDragging = true;
+					
+					el.style.left = (startLeft + me.clientX - startX) + 'px';
+					el.style.top = (startTop + me.clientY - startY) + 'px';
+					
+					// Cập nhật giá trị vào ô input (chia ngược scaleFactor để ra toạ độ thật)
+					document.getElementById('regX').value = Math.round(parseFloat(el.style.left) / scaleFactor);
+					document.getElementById('regY').value = Math.round(parseFloat(el.style.top) / scaleFactor);
+				};
+
+				document.onmouseup = () => {
+					document.onmousemove = null;
+				};
+			};
+
+			// --- Logic Click để chọn Region ---
+			el.onclick = (e) => {
+				if (isDragging) return; // Nếu vừa kéo thả xong thì không tính là click chọn
+				e.stopPropagation();
+				
+				selectRegionForEdit(reg);
+				
+				// Highlight vùng được chọn
+				document.querySelectorAll('.visual-region').forEach(d => d.classList.remove('active'));
+				el.classList.add('active');
+			};
+
+			// --- Logic Resize (Kéo góc để thay đổi kích thước) ---
+			const resizer = document.createElement('div');
+			resizer.className = 'resize-handle';
+			
+			resizer.onmousedown = (e) => {
+				e.stopPropagation();
+				const startX = e.clientX;
+				const startY = e.clientY;
+				const startW = parseFloat(el.style.width);
+				const startH = parseFloat(el.style.height);
+
+				document.onmousemove = (me) => {
+					el.style.width = (startW + me.clientX - startX) + 'px';
+					el.style.height = (startH + me.clientY - startY) + 'px';
+					
+					// Cập nhật giá trị vào ô input
+					document.getElementById('regW').value = Math.round(parseFloat(el.style.width) / scaleFactor);
+					document.getElementById('regH').value = Math.round(parseFloat(el.style.height) / scaleFactor);
+				};
+
+				document.onmouseup = () => {
+					document.onmousemove = null;
+				};
+			};
+
+			el.appendChild(resizer);
+			container.appendChild(el);
+		});
+	}
+
+	function renderRegionListTable() {
+		document.getElementById('regionListTable').innerHTML = regionsCache.map(r => `
+			<div class="region-box">
+				<span style="cursor:pointer" onclick='selectRegionForEdit(${JSON.stringify(r).replace(/'/g, "&#39;")})'>
+					<b>${r.name}</b> (${r.width}x${r.height})
+				</span>
+				<button class="btn btn-sm btn-danger py-0" onclick="deleteRegion(${r.id})">
+					<i class="bi bi-trash"></i>
+				</button>
+			</div>
+		`).join('');
+	}
+
+	function selectRegionForEdit(reg) {
+		document.getElementById('regId').value = reg.id;
+		document.getElementById('regName').value = reg.name;
+		document.getElementById('regX').value = reg.left_pos;
+		document.getElementById('regY').value = reg.top_pos;
+		document.getElementById('regW').value = reg.width;
+		document.getElementById('regH').value = reg.height;
+		document.getElementById('regZ').value = reg.z_index;
+		
+		// Chuyển nút bấm từ "Thêm" sang "Cập nhật"
+		document.getElementById('btnAddRegion').classList.add('d-none');
+		document.getElementById('btnUpdateRegion').classList.remove('d-none');
+	}
+
+	function resetRegionForm() {
+		document.getElementById('regId').value = '';
+		document.getElementById('regName').value = '';
+		
+		document.getElementById('btnAddRegion').classList.remove('d-none');
+		document.getElementById('btnUpdateRegion').classList.add('d-none');
+		
+		document.querySelectorAll('.visual-region').forEach(d => d.classList.remove('active'));
+	}
+
+	async function addRegion() {
+		const body = {
+			layout_id: currentLayoutId,
+			name: document.getElementById('regName').value,
+			left: document.getElementById('regX').value,
+			top: document.getElementById('regY').value,
+			width: document.getElementById('regW').value,
+			height: document.getElementById('regH').value,
+			z_index: document.getElementById('regZ').value
+		};
+		
+		await fetch(API + '/regions', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(body)
+		});
+		
+		refreshRegionData();
+	}
+
+	async function updateRegion() {
+		const id = document.getElementById('regId').value;
+		const body = {
+			name: document.getElementById('regName').value,
+			left: document.getElementById('regX').value,
+			top: document.getElementById('regY').value,
+			width: document.getElementById('regW').value,
+			height: document.getElementById('regH').value,
+			z_index: document.getElementById('regZ').value
+		};
+		
+		await fetch(API + `/regions/${id}`, {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(body)
+		});
+		
+		refreshRegionData();
+		alert("Đã lưu!");
+	}
+
+	async function deleteRegion(id) {
+		if (confirm("Xóa vùng này?")) {
+			await fetch(API + `/regions/${id}`, { method: 'DELETE' });
+			refreshRegionData();
+		}
+	}
+
+	async function refreshRegionData() {
+		const [regRes, itemRes] = await Promise.all([
+			fetch(API + `/layouts/${currentLayoutId}/regions`),
+			fetch(API + `/layouts/${currentLayoutId}/items`)
+		]);
+		
+		regionsCache = await regRes.json();
+		layoutItemsCache = await itemRes.json();
+		
+		renderVisualEditor();
+		renderRegionListTable();
+		resetRegionForm();
+	}
+
+
+	// ==========================================
+	// 5. CAMPAIGNS (CHIẾN DỊCH)
+	// ==========================================
+
+	async function loadCampaigns() {
+		const r = await fetch(API + '/campaigns');
+		const c = await r.json();
+		
+		// Lấy thêm số lượng item cho từng campaign (để hiển thị số Layouts)
+		GlobalData.campaigns = await Promise.all(c.map(async x => {
+			const i = await (await fetch(API + `/campaigns/${x.id}/items`)).json();
+			x.count = i.length;
+			return x;
+		}));
+
+		document.getElementById('campaignListRender').innerHTML = GlobalData.campaigns.map(x => `
+			<tr>
+				<td><b>${x.name}</b></td>
+				<td>${x.count} Layouts</td>
+				<td>
+					<button class="btn btn-sm btn-info btn-action" onclick="openPlaylistModal('campaign',${x.id},'${x.name}')">Chi tiết</button>
+					<button class="btn btn-sm btn-primary btn-action" onclick="openEditCampaign(${x.id},'${x.name}')">Sửa</button>
+					<button class="btn btn-sm btn-danger btn-action" onclick="deleteItem('campaigns',${x.id})">Xóa</button>
+				</td>
+			</tr>
+		`).join('');
+		
+		renderContentDropdown();
+	}
+
+	async function createCampaign() {
+		const name = document.getElementById('cName').value;
+		await fetch(API + '/campaigns', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ name: name })
+		});
+		loadCampaigns();
+	}
+
+    // --- UNIFIED PLAYLIST ---
+    let tempPlaylistItems = []; let sortableInstance = null;
+    async function openPlaylistModal(mode, id, title){
+        currentModalMode = mode; currentParentId = id;
+        document.getElementById('plTitle').innerText = (mode==='layout'?'Playlist: ':'Campaign: ') + title;
+        document.getElementById('addHeaderTitle').innerText = mode==='layout'?'Thêm Media':'Thêm Layout';
+        document.getElementById('searchToAdd').value = '';
+        
+        const regCont = document.getElementById('regionSelectContainer');
+        if(mode === 'layout'){
+            regCont.style.display = 'flex';
+            const r = await fetch(API+`/layouts/${id}/regions`); const regs = await r.json();
+            document.getElementById('plRegionSelect').innerHTML = regs.map(r=>`<option value="${r.id}">${r.name} (${r.width}x${r.height})</option>`).join('');
+            if(regs.length) { currentRegionId = regs[0].id; loadRegionItems(currentRegionId); } else { tempPlaylistItems=[]; renderTempPlaylist(); }
+        } else {
+            regCont.style.display = 'none';
+            loadCampaignItems(id);
+        }
+        renderSelector();
+        initSortable();
+        new bootstrap.Modal(document.getElementById('playlistModal')).show();
+    }
+    
+    function initSortable() {
+        const el = document.getElementById('playlistItems');
+        if(sortableInstance) sortableInstance.destroy();
+        sortableInstance = Sortable.create(el, { animation: 150, handle: '.drag-handle', ghostClass: 'sortable-ghost', forceFallback: true, fallbackClass: 'sortable-fallback', onEnd: function (evt) { const item = tempPlaylistItems.splice(evt.oldIndex, 1)[0]; tempPlaylistItems.splice(evt.newIndex, 0, item); renderTempPlaylist(); } });
+    }
+
+    function changePlaylistRegion(){ currentRegionId=document.getElementById('plRegionSelect').value; loadRegionItems(currentRegionId); }
+    
+    async function loadRegionItems(rid){ 
+        const r=await fetch(API+`/layouts/${currentParentId}/items?region_id=${rid}`); const items=await r.json(); 
+        // UPDATED: Store duration in tempPlaylistItems
+        tempPlaylistItems=items.map(i=>({id:i.id, real_id:i.id, name:i.name, type:i.type, path:i.path, data_id:i.media_id, duration: i.duration})); 
+        renderTempPlaylist(); 
+    }
+    
+    async function loadCampaignItems(cid){ 
+        const r=await fetch(API+`/campaigns/${cid}/items`); const items=await r.json(); 
+        tempPlaylistItems=items.map(i=>({id:i.id, real_id:i.id, name:i.name, type:i.orientation, path:'', data_id:i.layout_id, duration: null})); 
+        renderTempPlaylist(); 
+    }
+
+    function renderTempPlaylist(){
+        const tbody = document.getElementById('playlistItems');
+        if(tempPlaylistItems.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Danh sách trống</td></tr>'; return; }
+        tbody.innerHTML = tempPlaylistItems.map((item, idx) => {
+            const preview = (currentModalMode === 'layout' && item.type === 'image') ? `<img src="${item.path}" style="height:30px">` : `<span class="badge bg-light text-dark border">${item.type || '-'}</span>`;
+            // UPDATED: Display duration for media
+            const timeInfo = item.duration ? formatDuration(item.duration) : '-';
+            return `<tr class="fade-in">
+                <td class="text-center"><i class="bi bi-list drag-handle fs-5"></i> <span class="badge bg-secondary ms-2">${idx + 1}</span></td>
+                <td>${preview}</td>
+                <td>${item.name}</td>
+                <td>${timeInfo}</td>
+                <td class="text-center"><button class="btn btn-sm btn-danger" onclick="removeTempItem(${idx})"><i class="bi bi-x-lg"></i></button></td>
+            </tr>`;
+        }).join('');
+    }
+
+    function renderSelector(){
+        const c = document.getElementById('selectorArea'); c.innerHTML = '';
+        let data;
+        
+        if (currentModalMode === 'layout') {
+            data = GlobalData.media;
+        } else {
+            // Filter only layouts with 1 region for Campaigns
+            data = GlobalData.layouts.filter(l => l.regionCount === 1);
+        }
+
+        data.forEach(d => {
+            const div = document.createElement('div'); 
+            div.className = 'select-item'; 
+            div.dataset.search = d.name.toLowerCase();
+            
+            // --- CẬP NHẬT LOGIC HIỂN THỊ THÔNG TIN TẠI ĐÂY ---
+            let info = '';
+            if (currentModalMode === 'layout') {
+                // Nếu là Media: Hiển thị (Type | Thời lượng)
+                // Hàm formatDuration đã có sẵn ở đầu file script
+                const time = d.duration ? formatDuration(d.duration) : '00:00:00';
+                info = `<span class="badge bg-light text-dark border ms-1">${d.type}</span> <span class="badge bg-light text-dark border">${time}</span>`;
+            } else {
+                // Nếu là Layout (cho Campaign): Hiển thị (Orientation)
+                info = `<span class="badge bg-light text-dark border ms-1">${d.orientation}</span>`;
+            }
+
+            // Cập nhật HTML: Thêm biến info vào sau tên
+            div.innerHTML = `
+                <div class="text-truncate" style="max-width:85%;">
+                    <span class="fw-bold">${d.name}</span> 
+                    ${info}
+                </div>
+                <button class="btn btn-sm btn-outline-primary" onclick="addTempItem(${d.id})"><i class="bi bi-plus-lg"></i></button>
+            `;
+            c.appendChild(div);
+        });
+        
+        if(data.length === 0 && currentModalMode === 'campaign') {
+            c.innerHTML = '<div class="text-center text-danger small p-2">Không có layout 1 vùng nào!</div>';
+        }
+    }
+    
+    function addTempItem(id) {
+        if(currentModalMode === 'layout') {
+            const s = GlobalData.media.find(m => m.id == id); if(!s) return;
+            tempPlaylistItems.push({ real_id: null, name: s.name, type: s.type, path: s.path, data_id: s.id, duration: s.duration });
+        } else {
+            const s = GlobalData.layouts.find(l => l.id == id); if(!s) return;
+            tempPlaylistItems.push({ real_id: null, name: s.name, type: s.orientation, path: '', data_id: s.id, duration: null });
+        }
+        renderTempPlaylist();
+    }
+    
+    function removeTempItem(index) { tempPlaylistItems.splice(index, 1); renderTempPlaylist(); }
+    function filterSelector(areaId, term){ const t=term.toLowerCase(); document.getElementById(areaId || 'selectorArea').querySelectorAll('.select-item').forEach(e => e.style.display = e.dataset.search.includes(t) ? 'flex' : 'none'); }
+
+    async function savePlaylistChanges() {
+        const btn = document.querySelector('#playlistModal .btn-success'); btn.disabled = true;
+        try {
+            const idList = tempPlaylistItems.map(item => item.data_id);
+            const ep = currentModalMode === 'layout' ? `/layouts/${currentParentId}/update-items` : `/campaigns/${currentParentId}/update-items`;
+            const body = currentModalMode === 'layout' ? { items: idList, region_id: currentRegionId } : { items: idList };
+            
+            const res = await fetch(API + ep, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            if ((await res.json()).success) {
+                bootstrap.Modal.getInstance(document.getElementById('playlistModal')).hide();
+                alert('Đã lưu thành công!');
+                // Refresh data to update status indicators
+                if(currentModalMode === 'campaign') loadCampaigns(); else loadLayouts();
+            } else alert('Lỗi khi lưu!');
+        } catch (e) { alert('Lỗi kết nối!'); } finally { btn.disabled = false; }
+    }
+
+    // --- SCHEDULE & COMMON EDITS ---
+    async function loadScheduleList(){
+        const r=await fetch(API+'/schedules'); GlobalData.schedule=await r.json();
+        document.getElementById('scheduleList').innerHTML=GlobalData.schedule.map(s=>{
+            const ct=s.campaign_id?`<span class="badge bg-success">Camp: ${s.campaign_name}</span>`:`<span class="badge bg-info text-dark">Layout: ${s.layout_name}</span>`;
+            // Chuyển object targets thành JSON string để truyền vào nút Sửa
+            const targetsData = encodeURIComponent(JSON.stringify(s.targets || []));
+            return `<tr>
+                <td>${s.priority?'⭐ ':''}<b>${s.target_names}</b></td>
+                <td>${ct}</td>
+                <td>${formatDate(s.start_time)}<br>-> ${formatDate(s.end_time)}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary btn-action" onclick="openEditSchedule(${s.id}, '${targetsData}', '${s.campaign_id?'campaign':'layout'}', ${s.campaign_id||s.layout_id}, '${s.start_time}', '${s.end_time}', ${s.priority})">Sửa</button>
+                    <button class="btn btn-sm btn-danger btn-action" onclick="deleteItem('schedule',${s.id})">Xóa</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+    // ==========================================
+	// DROPDOWN HELPERS (HỖ TRỢ LỌC VÀ CHỌN TRONG SCHEDULE)
+	// ==========================================
+
+	function renderTargetDropdown() {
+		const tList = document.getElementById('targetList');
+		if (!tList) return;
+
+		// 1. Render danh sách Group
+		let html = `<div class="dropdown-header">GROUPS</div>`;
+		
+		html += GlobalData.groups.map(g => `
+			<div class="dropdown-item-text">
+				<input type="checkbox" 
+					   class="form-check-input sch-target-check" 
+					   value="${g.id}" 
+					   data-type="group" 
+					   id="grp_${g.id}" 
+					   onchange="updateTargetBtnLabel()">
+				<label class="form-check-label w-75 ms-2" for="grp_${g.id}">
+					${g.name}
+				</label>
+			</div>
+		`).join('');
+
+		// 2. Render danh sách Display
+		html += `<div class="dropdown-header">DISPLAYS</div>`;
+		
+		html += GlobalData.displays.map(d => `
+			<div class="dropdown-item-text">
+				<input type="checkbox" 
+					   class="form-check-input sch-target-check" 
+					   value="${d.id}" 
+					   data-type="device" 
+					   id="dev_${d.id}" 
+					   onchange="updateTargetBtnLabel()">
+				<label class="form-check-label w-75 ms-2" for="dev_${d.id}">
+					${d.name}
+				</label>
+			</div>
+		`).join('');
+
+		tList.innerHTML = html;
+	}
+
+	function renderContentDropdown() {
+		const cList = document.getElementById('contentList');
+		if (!cList) return;
+
+		// 1. Render danh sách Campaigns
+		let html = `<div class="dropdown-header">CAMPAIGNS</div>`;
+		
+		html += GlobalData.campaigns.map(c => `
+			<div class="dropdown-item-text" onclick="selectContent('campaign', ${c.id}, '${c.name}')">
+				<i class="bi bi-collection-play"></i> ${c.name}
+			</div>
+		`).join('');
+
+		// 2. Render danh sách Layouts
+		html += `<div class="dropdown-header">LAYOUTS</div>`;
+		
+		html += GlobalData.layouts.map(l => `
+			<div class="dropdown-item-text" onclick="selectContent('layout', ${l.id}, '${l.name} (${l.orientation})')">
+				<i class="bi bi-layout-text-window"></i> ${l.name}
+			</div>
+		`).join('');
+
+		cList.innerHTML = html;
+	}
+
+	function updateTargetBtnLabel() {
+		const checked = document.querySelectorAll('.sch-target-check:checked');
+		const btn = document.getElementById('targetDropdownBtn');
+		
+		if (checked.length === 0) {
+			btn.innerText = "-- Chọn Thiết bị/Nhóm --";
+		} else {
+			btn.innerText = `Đã chọn (${checked.length}) đối tượng`;
+		}
+	}
+
+	function filterScheduleDropdown(input, listId) {
+		const filter = input.value.toLowerCase();
+		
+		document.querySelectorAll(`#${listId} .dropdown-item-text`).forEach(e => {
+			// Kiểm tra text bên trong item có chứa từ khóa tìm kiếm không
+			const text = e.innerText.toLowerCase();
+			e.style.display = text.includes(filter) ? 'block' : 'none';
+		});
+	}
+
+	// Biến lưu trữ nội dung đang chọn để Submit
+	let selectedContentType = null;
+	let selectedContentId = null;
+
+	function selectContent(type, id, name) {
+		selectedContentType = type;
+		selectedContentId = id;
+		
+		// Cập nhật text hiển thị trên nút bấm
+		document.getElementById('contentDropdownBtn').innerText = name;
+		
+		// Cập nhật giá trị vào hidden input (nếu có form submit truyền thống)
+		const hiddenInput = document.getElementById('selectedContentVal');
+		if (hiddenInput) {
+			hiddenInput.value = id;
+		}
+	}
+    async function addSchedule() {
+        const checkboxes = document.querySelectorAll('.sch-target-check:checked'); 
+        if(checkboxes.length === 0) return alert("Chưa chọn thiết bị!"); 
+        if(!selectedContentId) return alert("Chưa chọn nội dung!");
+
+        // Gom tất cả checkbox đã chọn thành mảng targets
+        const targets = Array.from(checkboxes).map(cb => ({
+            type: cb.getAttribute('data-type'),
+            id: parseInt(cb.value)
+        }));
+
+        const body = {
+            targets: targets,
+            content_type: selectedContentType,
+            content_id: selectedContentId,
+            start_time: document.getElementById('schStart').value,
+            end_time: document.getElementById('schEnd').value,
+            priority: document.getElementById('schPriority').checked ? 1 : 0
+        };
+
+        await fetch(API+'/schedule', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+        //alert("Đã lên lịch!"); 
+        document.querySelectorAll('.sch-target-check').forEach(cb => cb.checked = false); 
+        updateTargetBtnLabel(); 
+        refreshData('schedule');
+    }
+
+    // --- EDIT HANDLERS ---
+	function openEditDisplay(id) {
+		const d = GlobalData.displays.find(x => x.id == id);
+		currentEditType = 'display';
+		currentEditId = id;
+
+		// Tạo danh sách layout option
+		const opts = '<option value="">-- Đen --</option>' +
+			GlobalData.layouts.map(l =>
+				`<option value="${l.id}" ${l.id == d.default_layout_id ? 'selected' : ''}>${l.name}</option>`
+			).join('');
+
+		// Render HTML
+		document.getElementById('editModalBody').innerHTML = `
+			<label class="form-label">Tên:</label>
+			<input id="eName" class="form-control mb-2" value="${d.name}">
+			
+			<label class="form-label">Code:</label>
+			<input id="eCode" class="form-control mb-2" value="${d.device_code}">
+			
+			<label class="form-label">Xoay:</label>
+			<select id="eOrient" class="form-select mb-2">
+				<option value="landscape" ${d.orientation == 'landscape' ? 'selected' : ''}>Ngang</option>
+				<option value="portrait" ${d.orientation == 'portrait' ? 'selected' : ''}>Dọc</option>
+			</select>
+			
+			<label class="form-label">Default Layout:</label>
+			<select id="eDefLayout" class="form-select">
+				${opts}
+			</select>
+		`;
+
+		new bootstrap.Modal(document.getElementById('editModal')).show();
+	}
+
+	function openEditMedia(id) {
+		const m = GlobalData.media.find(x => x.id == id);
+		currentEditType = 'media';
+		currentEditId = id;
+
+		// Logic kiểm tra loại media để tạo thuộc tính accept
+		let acceptAttr = '';
+		if (m.type === 'image') {
+			acceptAttr = 'accept="image/*"';
+		} else if (m.type === 'video') {
+			acceptAttr = 'accept="video/*"';
+		}
+
+		// Biến kiểm tra ẩn hiện
+		const isWebsite = (m.type === 'website');
+		const displayFile = isWebsite ? 'none' : 'block';
+		const displayUrl = isWebsite ? 'block' : 'none';
+
+		document.getElementById('editModalBody').innerHTML = `
+			<label class="form-label">Tên:</label>
+			<input id="eName" class="form-control mb-2" value="${m.name}">
+			
+			<label class="form-label">Giây:</label>
+			<input id="eDur" type="number" class="form-control mb-2" value="${m.duration}">
+			
+			<input type="hidden" id="eType" value="${m.type}">
+			
+			<div id="eFileGroup" style="display:${displayFile}">
+				<label class="form-label">Upload lại (${m.type}):</label>
+				<input type="file" id="eFile" class="form-control mb-2" ${acceptAttr}>
+			</div>
+			
+			<div id="eUrlGroup" style="display:${displayUrl}">
+				<label class="form-label">URL:</label>
+				<input id="eUrl" class="form-control mb-2" value="${isWebsite ? m.path : ''}">
+				
+				<label class="form-label">Scale (%):</label>
+				<input id="eScale" type="number" class="form-control" value="${m.scale || 100}">
+			</div>
+		`;
+
+		new bootstrap.Modal(document.getElementById('editModal')).show();
+	}
+
+	function openEditLayout(id) {
+		const l = GlobalData.layouts.find(x => x.id == id);
+		currentEditType = 'layout';
+		currentEditId = id;
+
+		document.getElementById('editModalBody').innerHTML = `
+			<label class="form-label">Tên:</label>
+			<input id="eName" class="form-control mb-2" value="${l.name}">
+			
+			<label class="form-label">Xoay:</label>
+			<select id="eOrient" class="form-select">
+				<option value="landscape" ${l.orientation == 'landscape' ? 'selected' : ''}>Ngang</option>
+				<option value="portrait" ${l.orientation == 'portrait' ? 'selected' : ''}>Dọc</option>
+			</select>
+		`;
+
+		new bootstrap.Modal(document.getElementById('editModal')).show();
+	}
+
+	function openEditCampaign(id, name) {
+		currentEditType = 'campaign';
+		currentEditId = id;
+		document.getElementById('editModalBody').innerHTML = `
+			<label class="form-label">Tên:</label>
+			<input id="eName" class="form-control" value="${name}">
+		`;
+		new bootstrap.Modal(document.getElementById('editModal')).show();
+	}
+
+	function openEditGroup(id, name) {
+		currentEditType = 'group';
+		currentEditId = id;
+		document.getElementById('editModalBody').innerHTML = `
+			<label class="form-label">Tên:</label>
+			<input id="eName" class="form-control" value="${name}">
+		`;
+		new bootstrap.Modal(document.getElementById('editModal')).show();
+	}
+    function openEditSchedule(id, targetsEncoded, cType, cId, s, e, p) { 
+        currentEditType='schedule'; currentEditId=id; 
+        const targets = JSON.parse(decodeURIComponent(targetsEncoded));
+        
+        // Tạo lại giao diện chọn đối tượng (Copy từ Add form nhưng đánh dấu checked)
+        let tHtml = `<div class="dropdown-header">GROUPS</div>` + GlobalData.groups.map(g => {
+            const isChecked = targets.some(t => t.target_type === 'group' && t.target_id === g.id) ? 'checked' : '';
+            return `<div class="dropdown-item-text"><input type="checkbox" class="form-check-input edit-sch-target" value="${g.id}" data-type="group" id="egrp_${g.id}" ${isChecked}><label class="form-check-label ms-2" for="egrp_${g.id}">${g.name}</label></div>`;
+        }).join('');
+        
+        tHtml += `<div class="dropdown-header">DISPLAYS</div>` + GlobalData.displays.map(d => {
+            const isChecked = targets.some(t => t.target_type === 'device' && t.target_id === d.id) ? 'checked' : '';
+            return `<div class="dropdown-item-text"><input type="checkbox" class="form-check-input edit-sch-target" value="${d.id}" data-type="device" id="edev_${d.id}" ${isChecked}><label class="form-check-label ms-2" for="edev_${d.id}">${d.name}</label></div>`;
+        }).join('');
+
+        const cOpts = GlobalData.layouts.map(l=>`<option value="layout|${l.id}" ${cType=='layout'&&cId==l.id?'selected':''}>[Layout] ${l.name}</option>`).join('') + GlobalData.campaigns.map(c=>`<option value="campaign|${c.id}" ${cType=='campaign'&&cId==c.id?'selected':''}>[Camp] ${c.name}</option>`).join(''); 
+
+        document.getElementById('editModalBody').innerHTML = `
+            <label class="fw-bold">Đối tượng áp dụng:</label>
+            <div class="border p-2 mb-2" style="max-height: 150px; overflow-y: auto; background: #fff;">${tHtml}</div>
+            
+            <label class="fw-bold">Nội dung:</label>
+            <select id="eSContent" class="form-select mb-2">${cOpts}</select>
+            
+            <div class="row">
+                <div class="col-6"><label>Từ:</label><input id="eSStart" type="datetime-local" class="form-control" value="${formatDateForInput(s)}"></div>
+                <div class="col-6"><label>Đến:</label><input id="eSEnd" type="datetime-local" class="form-control" value="${formatDateForInput(e)}"></div>
+            </div>
+            <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" id="eSPri" ${p?'checked':''}>
+                <label class="form-check-label text-danger">Ưu tiên (Chen ngang)</label>
+            </div>`; 
+        
+        new bootstrap.Modal(document.getElementById('editModal')).show(); 
+    }
+
+    document.getElementById('btnSaveEdit').onclick = async () => {
+		let body = {};
+
+		// 1. Trường hợp sửa DISPLAY
+		if (currentEditType === 'display') {
+			body = {
+				name: document.getElementById('eName').value,
+				device_code: document.getElementById('eCode').value,
+				orientation: document.getElementById('eOrient').value,
+				default_layout_id: document.getElementById('eDefLayout').value
+			};
+		}
+		// 2. Trường hợp sửa MEDIA
+		else if (currentEditType === 'media') {
+			const fd = new FormData();
+			fd.append('name', document.getElementById('eName').value);
+			fd.append('duration', document.getElementById('eDur').value);
+			fd.append('scale', document.getElementById('eScale')?.value || 100);
+			
+			const f = document.getElementById('eFile');
+			if (f && f.files[0]) fd.append('file', f.files[0]);
+			
+			const u = document.getElementById('eUrl');
+			if (u) fd.append('url', u.value);
+			
+			fd.append('type', document.getElementById('eType').value);
+			
+			await fetch(API + `/media/${currentEditId}`, { method: 'PUT', body: fd });
+			bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+			loadMedia();
+			return; // Return luôn vì Media dùng FormData, không dùng JSON bên dưới
+		}
+		// 3. Trường hợp sửa LAYOUT
+		else if (currentEditType === 'layout') {
+			body = {
+				name: document.getElementById('eName').value,
+				orientation: document.getElementById('eOrient').value
+			};
+		}
+		// 4. Trường hợp sửa GROUP hoặc CAMPAIGN
+		else if (currentEditType === 'group' || currentEditType === 'campaign') {
+			body = {
+				name: document.getElementById('eName').value
+			};
+		}
+		// 5. Trường hợp sửa SCHEDULE (QUAN TRỌNG: LOGIC MỚI)
+		else if (currentEditType === 'schedule') {
+			// Lấy danh sách các checkbox đã được check trong modal sửa
+			const checkboxes = document.querySelectorAll('.edit-sch-target:checked');
+			
+			if (checkboxes.length === 0) {
+				alert("Vui lòng chọn ít nhất một thiết bị hoặc nhóm!");
+				return;
+			}
+
+			// Tạo mảng targets từ checkbox
+			const targets = Array.from(checkboxes).map(cb => ({
+				type: cb.getAttribute('data-type'), // 'device' hoặc 'group'
+				id: parseInt(cb.value)
+			}));
+
+			const [cType, cId] = document.getElementById('eSContent').value.split('|');
+			
+			body = {
+				targets: targets, // Gửi mảng targets thay vì target_id đơn lẻ
+				content_type: cType,
+				content_id: cId,
+				start_time: document.getElementById('eSStart').value,
+				end_time: document.getElementById('eSEnd').value,
+				priority: document.getElementById('eSPri').checked ? 1 : 0
+			};
+		}
+
+		// Gửi Request chung cho các loại (trừ media đã return ở trên)
+		// Lưu ý: Endpoint cho schedule là /api/schedules/:id (có chữ 's')
+		// Các endpoint khác thường là /api/layouts/:id (có chữ 's')
+		// Logic cũ của bạn dùng: currentEditType + 's' -> layouts, campaigns... 
+		// Riêng schedule cũng cần thành schedules.
+		const endpoint = API + `/${currentEditType}s/${currentEditId}`;
+		
+		await fetch(endpoint, {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(body)
+		});
+
+		bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+		
+		// Refresh lại bảng dữ liệu tương ứng
+		refreshData(currentEditType === 'schedule' ? 'schedule' : (currentEditType + 's'));
+	};
+    
+    // UPDATED: Filter media types
+    function toggleMInput(p){ 
+        const t=document.getElementById(p=='new'?'mType':'eType').value; 
+        const f=document.getElementById(p=='new'?'mFile':'eFile');
+        const fd=document.getElementById(p=='new'?'mFileGroup':'eFileGroup'); 
+        const ud=document.getElementById(p=='new'?'mUrlGroup':'eUrlGroup'); 
+        
+        if(t === 'video') f.accept = ".mp4";
+        else if (t === 'image') f.accept = ".png, .jpeg, .jpg, .bmp, .webp";
+        else f.accept = "*";
+
+        fd.style.display=t=='website'?'none':'block'; 
+        ud.style.display=t=='website'?'block':'none'; 
+    }
+    
+    async function deleteItem(ep,id){ if(confirm("Xóa?")){await fetch(API+`/${ep}/${id}`,{method:'DELETE'}); refreshData(ep);} }
+    let currentScheduleTargetType = '';
+
+    window.onload = async () => {
+        // 1. Giữ nguyên logic active tab cũ
+        const activeTab = localStorage.getItem('activeTab'); 
+        if (activeTab) { 
+            const t = document.querySelector(`button[data-bs-target="${activeTab}"]`); 
+            if(t) bootstrap.Tab.getOrCreateInstance(t).show(); 
+        }
+
+        // 2. Tải dữ liệu lần đầu
+        await Promise.all([loadDisplays(), loadGroups(), loadMedia(), loadLayouts(), loadCampaigns()]); 
+        loadScheduleList();
+        
+        // 3. --- CODE MỚI THÊM VÀO ---
+        // Tự động bật Auto Refresh và set 3s
+        const autoSwitch = document.getElementById('autoRefreshSwitch');
+        const intervalInput = document.getElementById('refreshInterval');
+        
+        if(autoSwitch) {
+            autoSwitch.checked = true; // Tự động tích vào nút bật
+            if(intervalInput) intervalInput.value = 3; // Đảm bảo là 3 giây
+            toggleAutoRefresh(); // Kích hoạt hàm chạy timer ngay lập tức
+        }
+        // -----------------------------
+
+        document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(t => t.addEventListener('shown.bs.tab', e => localStorage.setItem('activeTab', e.target.getAttribute('data-bs-target'))));
+        toggleMInput('new');
+    };
+	window.addEventListener( 'touchmove', function() {}, {passive: false});
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
+
+<script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/index.min.js"></script>
+
+<script>
+    // Tự động chuyển đổi Touch thành Drag
+    var DragDropPolyfill = MobileDragDrop.polyfill({
+        // Giữ ngón tay 200ms để bắt đầu kéo (tránh nhầm với lướt màn hình)
+        holdToDrag: 200 
+    });
+
+    // Sửa lỗi xung đột cuộn trang trên iOS/Android
+    // Khi đang kéo item thì không cuộn trang web
+    document.addEventListener('touchmove', function(e) {
+        if (document.body.classList.contains('dnd-poly-dragging')) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+</script>
+</body>
+</html>

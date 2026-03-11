@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Smart TV Player (Strict Orientation)</title>
+    <style>
+        body, html { 
+            margin: 0; padding: 0; 
+            background: #000; 
+            width: 100vw; height: 100vh; 
+            overflow: hidden; 
+        }
+        
+        /* #app đại diện cho Màn hình vật lý (TV) ảo */
+        #app { 
+            position: absolute; 
+            background: #000; 
+            top: 50%; left: 50%;
+            transform-origin: center center; 
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            overflow: hidden; /* Cắt phần thừa nếu có */
+        }
+
+        /* #content-layer là lớp chứa nội dung layout thực tế */
+        #content-layer {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform-origin: center center;
+            /* background: #1a1a1a;  Màu nền nhẹ để thấy vùng layout nếu bị co nhỏ */
+        }
+
+        .region-container {
+            position: absolute;
+            overflow: hidden;
+        }
+        
+        img, video, iframe { 
+            width: 100%; height: 100%; 
+            object-fit: fill; 
+            display: block; border: none; 
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="content-layer"></div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        let deviceCode = urlParams.get('code');
+        const previewLayoutId = urlParams.get('previewLayout');
+
+        if (!deviceCode) {
+            deviceCode = localStorage.getItem('cms_device_code') || Math.random().toString(36).substr(2, 6).toUpperCase();
+            localStorage.setItem('cms_device_code', deviceCode);
+            if (!urlParams.get('code')) window.location.search = `?code=${deviceCode}${previewLayoutId ? '&previewLayout='+previewLayoutId : ''}`;
+        }
+
+        let currentHash = "";
+        let regionTimers = {}; 
+
+        async function checkSchedule() {
+            try {
+                let url = `/api/play/${deviceCode}?hash=${currentHash}`;
+                if (previewLayoutId) url += `&previewLayout=${previewLayoutId}`;
+                
+                const res = await fetch(url);
+                const data = await res.json();
+
+                if (data.hash === "pending") {
+                    showStatus(`Waiting Approval<br><small>${deviceCode}</small>`);
+                    return;
+                }
+
+                if (data.hash && data.hash !== currentHash) {
+                    currentHash = data.hash;
+                    if(data.device_name) document.title = data.device_name;
+                    renderLayout(data);
+                }
+            } catch (e) { console.error("Error:", e); }
+        }
+
+        function showStatus(msg) {
+            const app = document.getElementById('app');
+            app.style.width = '100vw'; app.style.height = '100vh';
+            app.style.transform = 'translate(-50%, -50%)';
+            app.innerHTML = `<h1 style="color:white;text-align:center;font-family:sans-serif;margin-top:20%">${msg}</h1>`;
+        }
+
+        function renderLayout(data) {
+            const app = document.getElementById('app');
+            const contentLayer = document.getElementById('content-layer');
+            contentLayer.innerHTML = ''; 
+            
+            Object.values(regionTimers).forEach(t => clearTimeout(t));
+            regionTimers = {};
+
+            // --- BƯỚC 1: XÁC ĐỊNH KÍCH THƯỚC DEVICE (TỪ CẤU HÌNH ADMIN) ---
+            // Nếu Setting Device là Landscape -> Luôn là 1920x1080
+            // Nếu Setting Device là Portrait -> Luôn là 1080x1920
+            const deviceOrient = data.settings?.deviceOrientation || 'landscape';
+            const devW = deviceOrient === 'landscape' ? 1920 : 1080;
+            const devH = deviceOrient === 'landscape' ? 1080 : 1920;
+
+            // Set cứng kích thước cho #app (Đây là cái TV ảo)
+            app.style.width = devW + 'px';
+            app.style.height = devH + 'px';
+
+            // --- BƯỚC 2: FIT DEVICE VÀO MÀN HÌNH TRÌNH DUYỆT (XOAY NẾU CẦN) ---
+            const winW = window.innerWidth;
+            const winH = window.innerHeight;
+            let rotation = 0;
+            let scale = 1;
+
+            // Logic xoay: Chỉ quan tâm việc khớp chiều
+            // Device Ngang (1920>1080) nhưng Màn hình Dọc (winW < winH) -> Xoay 90
+            if (devW > devH && winW < winH) {
+                rotation = 90;
+                // Khi xoay 90: Width Device (1920) phải nhét vừa Height Window
+                // Height Device (1080) phải nhét vừa Width Window
+                scale = Math.min(winH / devW, winW / devH);
+            } 
+            // Device Dọc (1080<1920) nhưng Màn hình Ngang (winW > winH) -> Xoay -90 (hoặc 90 tùy ý)
+            else if (devW < devH && winW > winH) {
+                rotation = -90; 
+                scale = Math.min(winH / devW, winW / devH);
+            } 
+            // Cùng chiều -> Không xoay
+            else {
+                rotation = 0;
+                scale = Math.min(winW / devW, winH / devH);
+            }
+
+            app.style.transform = `translate(-50%, -50%) rotate(${rotation}deg) scale(${scale})`;
+
+
+            // --- BƯỚC 3: XỬ LÝ CONTENT (LAYOUT) BÊN TRONG DEVICE ---
+            const layoutOrient = data.settings?.layoutOrientation || deviceOrient;
+            
+            // Kích thước thật của Layout
+            const layW = layoutOrient === 'portrait' ? 1080 : 1920;
+            const layH = layoutOrient === 'portrait' ? 1920 : 1080;
+
+            contentLayer.style.width = layW + 'px';
+            contentLayer.style.height = layH + 'px';
+
+            // Logic Scale Content (Căn giữa đen 2 bên)
+            // Nếu Device Ngang (1920x1080) chạy Layout Dọc (1080x1920)
+            if (deviceOrient === 'landscape' && layoutOrient === 'portrait') {
+                // Phải thu nhỏ Layout Dọc sao cho Chiều cao (1920) vừa khít Chiều cao Device (1080)
+                const contentScale = devH / layH; // 1080 / 1920 = 0.5625
+                contentLayer.style.transform = `translate(-50%, -50%) scale(${contentScale})`;
+            }
+            // Nếu Device Dọc (1080x1920) chạy Layout Ngang (1920x1080)
+            else if (deviceOrient === 'portrait' && layoutOrient === 'landscape') {
+                // Thu nhỏ Layout Ngang sao cho Chiều rộng (1920) vừa khít Chiều rộng Device (1080)
+                const contentScale = devW / layW; // 1080 / 1920
+                contentLayer.style.transform = `translate(-50%, -50%) scale(${contentScale})`;
+            }
+            // Cùng chiều -> Full
+            else {
+                contentLayer.style.transform = `translate(-50%, -50%) scale(1)`;
+            }
+
+            // --- BƯỚC 4: RENDER CÁC VÙNG ---
+            const regions = data.regions || [];
+            
+            if (regions.length === 0 && data.playlist && data.playlist.length > 0) {
+                 regions.push({ id: 'main', x: 0, y: 0, width: layW, height: layH, zIndex: 1, playlist: data.playlist });
+            }
+
+            regions.forEach(reg => {
+                const div = document.createElement('div');
+                div.className = 'region-container';
+                // Tọa độ tương đối trong content-layer
+                div.style.left = reg.x + 'px';
+                div.style.top = reg.y + 'px';
+                div.style.width = reg.width + 'px';
+                div.style.height = reg.height + 'px';
+                div.style.zIndex = reg.zIndex;
+                div.id = 'region_' + reg.id;
+                
+                contentLayer.appendChild(div);
+
+                if (reg.playlist && reg.playlist.length > 0) {
+                    playRegion(reg.id, reg.playlist, 0);
+                }
+            });
+        }
+
+        function playRegion(regionId, playlist, index) {
+            if (index >= playlist.length) index = 0;
+            const item = playlist[index];
+            const container = document.getElementById('region_' + regionId);
+            if (!container) return; 
+
+            container.innerHTML = ''; 
+            const durationMs = (item.duration || 10) * 1000;
+            let el = null;
+
+            if (item.type === 'video') {
+                el = document.createElement('video');
+                el.src = item.path; el.autoplay = true; el.muted = false; el.playsInline = true;
+                el.style.backgroundColor = 'black'; // Tránh nháy trắng
+                const p = el.play();
+                if (p !== undefined) p.catch(() => { el.muted = true; el.play(); });
+                el.onerror = () => { clearTimeout(regionTimers[regionId]); playRegion(regionId, playlist, index + 1); };
+                // Video object-fit
+                el.style.objectFit = 'fill'; 
+            } else if (item.type === 'image') {
+                el = document.createElement('img');
+                el.src = item.path;
+            } else if (item.type === 'website') {
+                el = document.createElement('iframe');
+                el.src = item.path;
+                el.scrolling = "no";
+            }
+
+            if (el) container.appendChild(el);
+            regionTimers[regionId] = setTimeout(() => { playRegion(regionId, playlist, index + 1); }, durationMs);
+        }
+
+        checkSchedule();
+        setInterval(checkSchedule, 5000); 
+        window.addEventListener('resize', () => { if(currentHash) checkSchedule(); });
+    </script>
+</body>
+</html>
