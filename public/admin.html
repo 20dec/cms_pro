@@ -1343,10 +1343,13 @@
 	}
     async function addSchedule() {
         const checkboxes = document.querySelectorAll('.sch-target-check:checked'); 
-        if(checkboxes.length === 0) return alert("Chưa chọn thiết bị!"); 
-        if(!selectedContentId) return alert("Chưa chọn nội dung!");
+        if(checkboxes.length === 0) return alert("Chưa chọn thiết bị/nhóm!"); 
+        if(!selectedContentId) return alert("Chưa chọn nội dung (Layout/Campaign)!");
 
-        // Gom tất cả checkbox đã chọn thành mảng targets
+        const start = document.getElementById('schStart').value;
+        const end = document.getElementById('schEnd').value;
+        if(!start || !end) return alert("Vui lòng nhập đủ thời gian Bắt đầu và Kết thúc!");
+
         const targets = Array.from(checkboxes).map(cb => ({
             type: cb.getAttribute('data-type'),
             id: parseInt(cb.value)
@@ -1356,16 +1359,31 @@
             targets: targets,
             content_type: selectedContentType,
             content_id: selectedContentId,
-            start_time: document.getElementById('schStart').value,
-            end_time: document.getElementById('schEnd').value,
+            start_time: start,
+            end_time: end,
             priority: document.getElementById('schPriority').checked ? 1 : 0
         };
 
-        await fetch(API+'/schedule', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
-        //alert("Đã lên lịch!"); 
-        document.querySelectorAll('.sch-target-check').forEach(cb => cb.checked = false); 
-        updateTargetBtnLabel(); 
-        refreshData('schedule');
+        try {
+            const res = await fetch(API+'/schedule', { 
+                method:'POST', 
+                headers:{'Content-Type':'application/json'}, 
+                body:JSON.stringify(body) 
+            });
+            const result = await res.json();
+            
+            if (result.success) {
+                // Chỉ xóa khi thành công
+                document.querySelectorAll('.sch-target-check').forEach(cb => cb.checked = false); 
+                updateTargetBtnLabel(); 
+                refreshData('schedule');
+                alert("Đã lưu lịch thành công!");
+            } else {
+                alert("Lỗi khi lưu lịch: " + result.error);
+            }
+        } catch (e) {
+            alert("Lỗi kết nối server!");
+        }
     }
 
     // --- EDIT HANDLERS ---

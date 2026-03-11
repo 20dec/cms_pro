@@ -286,20 +286,32 @@ app.get('/api/schedules', (req, res) => {
 });
 
 app.post('/api/schedule', (req, res) => {
-    // req.body.targets là mảng: [{type:'device', id:1}, {type:'group', id:2}]
     const { targets, content_type, content_id, start_time, end_time, priority } = req.body;
+    
+    // Xử lý định dạng ngày (MySQL không thích chữ 'T' từ input datetime-local)
+    const start = start_time ? start_time.replace('T', ' ') : null;
+    const end = end_time ? end_time.replace('T', ' ') : null;
+
+    if (!start || !end) return res.status(400).json({ success: false, error: "Thiếu thời gian" });
+
     const layoutId = content_type === 'layout' ? content_id : null;
     const campId = content_type === 'campaign' ? content_id : null;
 
     db.query('INSERT INTO schedules (layout_id, campaign_id, start_time, end_time, priority) VALUES (?, ?, ?, ?, ?)',
-        [layoutId, campId, start_time, end_time, priority || 0], (err, result) => {
-            if (err) return res.json({ success: false, error: err.message });
+        [layoutId, campId, start, end, priority || 0], (err, result) => {
+            if (err) {
+                console.error("Lỗi INSERT schedule:", err);
+                return res.json({ success: false, error: err.message });
+            }
 
             const scheduleId = result.insertId;
             if (!targets || !targets.length) return res.json({ success: true });
 
             const values = targets.map(t => [scheduleId, t.type, t.id]);
-            db.query('INSERT INTO schedule_targets (schedule_id, target_type, target_id) VALUES ?', [values], (e) => res.json({ success: !e }));
+            db.query('INSERT INTO schedule_targets (schedule_id, target_type, target_id) VALUES ?', [values], (e) => {
+                if (e) console.error("Lỗi INSERT schedule_targets:", e);
+                res.json({ success: !e, error: e ? e.message : null });
+            });
         });
 });
 
@@ -338,15 +350,25 @@ app.get('/api/play/:deviceCode', (req, res) => {
 
     // 1. Kiểm tra thiết bị tồn tại chưa
     db.query('SELECT id, name, orientation, status, default_layout_id, pending_command FROM devices WHERE device_code = ?', [code], (err, devices) => {
-        if (err || !devices.length) {
+        let device = devices && devices.length ? devices[0] : null;
+
+        // Logic Preview nhanh cho PREVIEW_BOX (Bỏ qua duyệt)
+        if (code === 'PREVIEW_BOX' && !device) {
+            device = { id: 0, name: 'DEMO PREVIEW', orientation: 'landscape', status: 1 };
+        }
+
+        if (code === 'PREVIEW_BOX' && previewLayoutId) {
+            return processLayout(previewLayoutId, device, null);
+        }
+
+        if (err || !device) {
             // Nếu là thiết bị mới (không phải Box Preview) -> Tự động tạo
-            if (!devices.length && code !== 'PREVIEW_BOX') {
+            if (!device && code !== 'PREVIEW_BOX') {
                 db.query('INSERT INTO devices (name, device_code, orientation, status) VALUES (?, ?, ?, 0)', ["NEW-" + code.substring(0, 6), code, 'landscape']);
             }
             return res.json({ hash: "pending", status: 0 });
         }
 
-        const device = devices[0];
         const pendingCmd = device.pending_command;
 
         // Update trạng thái thiết bị (Heartbeat)
@@ -356,12 +378,8 @@ app.get('/api/play/:deviceCode', (req, res) => {
                 [clientIp, reportedHash, null, isDownloading, device.id]);
         }
 
-        if (device.status === 0) return res.json({ hash: "pending", status: 0 });
-
-        // Logic Preview nhanh (Debug)
-        if (code === 'PREVIEW_BOX' && previewLayoutId) {
-            return processLayout(previewLayoutId, device, pendingCmd);
-        }
+        // Với PREVIEW_BOX, bỏ qua check status
+        if (device.status === 0 && code !== 'PREVIEW_BOX') return res.json({ hash: "pending", status: 0 });
 
         // 2. Tìm Lịch Trình (Logic Mới: Join bảng schedule_targets)
         const sqlSchedule = `
